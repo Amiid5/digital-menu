@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { gsap } from 'gsap';
-	import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-	gsap.registerPlugin(ScrollTrigger);
 
 	interface GalleryImage {
 		id: number;
@@ -51,51 +48,59 @@
 	}
 
 	onMount(() => {
-		const header = sectionEl.querySelector('.gallery-header') as HTMLElement;
-		const headerChildren = gsap.utils.toArray<HTMLElement>(header.children);
-		const initialTiles = gsap.utils.toArray<HTMLElement>(gridEl.children);
+		let cleanup: (() => void) | undefined;
 
-		gsap.set(headerChildren, { opacity: 0, y: 24 });
-		gsap.set(initialTiles, { opacity: 0, y: 40 });
+		import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+			gsap.registerPlugin(ScrollTrigger);
 
-		const tl = gsap.timeline({ paused: true });
-		tl.to(headerChildren, {
-			opacity: 1,
-			y: 0,
-			duration: 0.9,
-			ease: 'power3.out',
-			stagger: 0.15
-		});
-		tl.to(
-			initialTiles,
-			{
+			const header = sectionEl.querySelector('.gallery-header') as HTMLElement;
+			const headerChildren = gsap.utils.toArray<HTMLElement>(header.children);
+			const initialTiles = gsap.utils.toArray<HTMLElement>(gridEl.children);
+
+			gsap.set(headerChildren, { opacity: 0, y: 24 });
+			gsap.set(initialTiles, { opacity: 0, y: 40 });
+
+			const tl = gsap.timeline({ paused: true });
+			tl.to(headerChildren, {
 				opacity: 1,
 				y: 0,
-				duration: 0.7,
+				duration: 0.9,
 				ease: 'power3.out',
-				stagger: 0.08
-			},
-			'-=0.4'
-		);
+				stagger: 0.15
+			});
+			tl.to(
+				initialTiles,
+				{
+					opacity: 1,
+					y: 0,
+					duration: 0.7,
+					ease: 'power3.out',
+					stagger: 0.08
+				},
+				'-=0.4'
+			);
 
-		const st = ScrollTrigger.create({
-			trigger: sectionEl,
-			start: 'top 80%',
-			end: 'bottom top',
-			onEnter: () => {
-				entranceDone = true;
-				tl.play();
-			},
-			onLeaveBack: () => {
-				entranceDone = false;
-				tl.reverse();
-			}
+			const st = ScrollTrigger.create({
+				trigger: sectionEl,
+				start: 'top 80%',
+				end: 'bottom top',
+				onEnter: () => {
+					entranceDone = true;
+					tl.play();
+				},
+				onLeaveBack: () => {
+					entranceDone = false;
+					tl.reverse();
+				}
+			});
+
+			cleanup = () => {
+				st.kill();
+				tl.kill();
+			};
 		});
 
-		return () => {
-			st.kill();
-			tl.kill();
-		};
+		return () => cleanup?.();
 	});
 
 	async function loadMore() {

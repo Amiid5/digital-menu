@@ -1,81 +1,86 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { gsap } from 'gsap';
-	import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-	gsap.registerPlugin(ScrollTrigger);
+	onMount(() => {
+		let cleanup: (() => void) | undefined;
 
-	onMount((): (() => void) | void => {
-		const header = document.querySelector<HTMLElement>('.showcase-header');
-		const showcase = document.querySelector<HTMLElement>('.bg-showCase');
+		import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+			gsap.registerPlugin(ScrollTrigger);
 
-		if (!header || !showcase) {
-			console.warn('Showcase: required elements not found in the DOM.');
-			return;
-		}
+			const header = document.querySelector<HTMLElement>('.showcase-header');
+			const showcase = document.querySelector<HTMLElement>('.bg-showCase');
 
-		const cards = gsap.utils.toArray<HTMLElement>('[data-card]');
-		const headerChildren = gsap.utils.toArray<HTMLElement>(header.children);
-		const flourishes = gsap.utils.toArray<HTMLElement>('[data-flourish]');
+			if (!header || !showcase) {
+				console.warn('Showcase: required elements not found in the DOM.');
+				return;
+			}
 
-		// Initial hidden state
-		gsap.set(headerChildren, { opacity: 0, y: 30 });
-		gsap.set(cards, { opacity: 0, y: 70 });
-		gsap.set(flourishes, { opacity: 0, scale: 0.8 });
+			const cards = gsap.utils.toArray<HTMLElement>('[data-card]');
+			const headerChildren = gsap.utils.toArray<HTMLElement>(header.children);
+			const flourishes = gsap.utils.toArray<HTMLElement>('[data-flourish]');
 
-		// Master timeline — scrubbed by a single ScrollTrigger so it can
-		// play forward on enter and reverse cleanly on scroll-up/leave-back.
-		const tl = gsap.timeline({ paused: true });
+			// Initial hidden state
+			gsap.set(headerChildren, { opacity: 0, y: 30 });
+			gsap.set(cards, { opacity: 0, y: 70 });
+			gsap.set(flourishes, { opacity: 0, scale: 0.8 });
 
-		tl.to(flourishes, {
-			opacity: 1,
-			scale: 1,
-			duration: 0.6,
-			ease: 'power2.out',
-			stagger: 0.1
-		});
+			// Master timeline — scrubbed by a single ScrollTrigger so it can
+			// play forward on enter and reverse cleanly on scroll-up/leave-back.
+			const tl = gsap.timeline({ paused: true });
 
-		tl.to(
-			headerChildren,
-			{
+			tl.to(flourishes, {
 				opacity: 1,
-				y: 0,
-				duration: 1.1,
-				ease: 'power3.out',
-				stagger: 0.22
-			},
-			'-=0.3'
-		);
+				scale: 1,
+				duration: 0.6,
+				ease: 'power2.out',
+				stagger: 0.1
+			});
 
-		cards.forEach((card: HTMLElement, i: number): void => {
 			tl.to(
-				card,
+				headerChildren,
 				{
 					opacity: 1,
 					y: 0,
-					duration: 0.9,
-					ease: 'power3.out'
+					duration: 1.1,
+					ease: 'power3.out',
+					stagger: 0.22
 				},
-				i === 0 ? '-=0.2' : '-=0.55'
+				'-=0.3'
 			);
+
+			cards.forEach((card: HTMLElement, i: number): void => {
+				tl.to(
+					card,
+					{
+						opacity: 1,
+						y: 0,
+						duration: 0.9,
+						ease: 'power3.out'
+					},
+					i === 0 ? '-=0.2' : '-=0.55'
+				);
+			});
+
+			const st = ScrollTrigger.create({
+				trigger: showcase,
+				start: 'top 80%',
+				end: 'bottom top',
+				onEnter: (): void => {
+					tl.play();
+				},
+				onLeaveBack: (): void => {
+					tl.reverse();
+				}
+			});
+
+			cleanup = (): void => {
+				st.kill();
+				tl.kill();
+			};
 		});
 
-		const st = ScrollTrigger.create({
-			trigger: showcase,
-			start: 'top 80%',
-			end: 'bottom top',
-			onEnter: (): void => {
-				tl.play();
-			},
-			onLeaveBack: (): void => {
-				tl.reverse();
-			}
-		});
-
-		return (): void => {
-			st.kill();
-			tl.kill();
-		};
+		return () => cleanup?.();
 	});
 </script>
 

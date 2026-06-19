@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { gsap } from 'gsap';
-	import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-	gsap.registerPlugin(ScrollTrigger);
 
 	interface FormState {
 		name: string;
@@ -97,32 +94,40 @@
 	let sectionEl: HTMLDivElement;
 
 	onMount(() => {
-		const content = sectionEl.querySelector('.book-content') as HTMLElement;
-		const children = gsap.utils.toArray<HTMLElement>(content.children);
+		let cleanup: (() => void) | undefined;
 
-		gsap.set(children, { opacity: 0, y: 36 });
+		import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+			gsap.registerPlugin(ScrollTrigger);
 
-		const tl = gsap.timeline({ paused: true });
-		tl.to(children, {
-			opacity: 1,
-			y: 0,
-			duration: 0.9,
-			ease: 'power3.out',
-			stagger: 0.15
+			const content = sectionEl.querySelector('.book-content') as HTMLElement;
+			const children = gsap.utils.toArray<HTMLElement>(content.children);
+
+			gsap.set(children, { opacity: 0, y: 36 });
+
+			const tl = gsap.timeline({ paused: true });
+			tl.to(children, {
+				opacity: 1,
+				y: 0,
+				duration: 0.9,
+				ease: 'power3.out',
+				stagger: 0.15
+			});
+
+			const st = ScrollTrigger.create({
+				trigger: sectionEl,
+				start: 'top 78%',
+				end: 'bottom top',
+				onEnter: () => tl.play(),
+				onLeaveBack: () => tl.reverse()
+			});
+
+			cleanup = () => {
+				st.kill();
+				tl.kill();
+			};
 		});
 
-		const st = ScrollTrigger.create({
-			trigger: sectionEl,
-			start: 'top 78%',
-			end: 'bottom top',
-			onEnter: () => tl.play(),
-			onLeaveBack: () => tl.reverse()
-		});
-
-		return () => {
-			st.kill();
-			tl.kill();
-		};
+		return () => cleanup?.();
 	});
 
 	const todayISO = new Date().toISOString().split('T')[0];

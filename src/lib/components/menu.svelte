@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { gsap } from 'gsap';
-	import { ScrollTrigger } from 'gsap/ScrollTrigger';
 	import { onMount, tick } from 'svelte';
-
-	gsap.registerPlugin(ScrollTrigger);
 
 	interface MenuItem {
 		category: string;
@@ -287,23 +284,31 @@
 	}
 
 	onMount(() => {
-		playCardAnimation();
+		let cleanup: (() => void) | undefined;
 
-		const triggers = ScrollTrigger.batch('.menu-card', {
-			start: 'top 90%',
-			onEnter: (els: Element[]) => {
-				gsap.fromTo(
-					els,
-					{ opacity: 0, y: 24 },
-					{ opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.06 }
-				);
-			},
-			once: true
+		import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+			gsap.registerPlugin(ScrollTrigger);
+
+			playCardAnimation();
+
+			const triggers = ScrollTrigger.batch('.menu-card', {
+				start: 'top 90%',
+				onEnter: (els: Element[]) => {
+					gsap.fromTo(
+						els,
+						{ opacity: 0, y: 24 },
+						{ opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.06 }
+					);
+				},
+				once: true
+			});
+
+			cleanup = () => {
+				triggers.forEach((t: ScrollTrigger) => t.kill());
+			};
 		});
 
-		return () => {
-			triggers.forEach((t: ScrollTrigger) => t.kill());
-		};
+		return () => cleanup?.();
 	});
 </script>
 
